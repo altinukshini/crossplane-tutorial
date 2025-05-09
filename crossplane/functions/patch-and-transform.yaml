@@ -1,0 +1,13 @@
+---
+# Function: Patch and Transform
+# This composition function does everything Crossplane's built-in patch & transform composition does.
+# https://docs.crossplane.io/latest/concepts/patch-and-transform/
+# Instead of specifying spec.resources in your Composition, you can use this function. 
+# See the README for examples and documentation
+# https://github.com/crossplane-contrib/function-patch-and-transform
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.8.2
