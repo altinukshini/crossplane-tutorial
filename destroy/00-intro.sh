@@ -4,7 +4,7 @@ set -e
 gum style \
 	--foreground 212 --border-foreground 212 --border double \
 	--margin "1 2" --padding "2 4" \
-	'Destruction of the Introduction chapter'
+	'Setup for the Introduction chapter'
 
 gum confirm '
 Are you ready to start?
@@ -19,12 +19,11 @@ echo "
 |Linux Shell     |Yes                  |Use WSL if you are running Windows                 |
 |Docker          |Yes                  |'https://docs.docker.com/engine/install'           |
 |kind CLI        |Yes                  |'https://kind.sigs.k8s.io/docs/user/quick-start/#installation'|
+|kubectl CLI     |Yes                  |'https://kubernetes.io/docs/tasks/tools/#kubectl'  |
+|crossplane CLI  |Yes                  |'https://docs.crossplane.io/latest/cli'            |
+|yq CLI          |Yes                  |'https://github.com/mikefarah/yq#install'          |
 |AWS account with admin permissions|If using AWS|'https://aws.amazon.com'                  |
 |AWS CLI         |If using AWS         |'https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html'|
-|Google Cloud account with admin permissions|If using Google Cloud|'https://cloud.google.com'|
-|Google Cloud CLI|If using Google Cloud|'https://cloud.google.com/sdk/docs/install'        |
-|Azure account with admin permissions|If using Azure|'https://azure.microsoft.com'         |
-|az CLI          |If using Azure       |'https://learn.microsoft.com/cli/azure/install-azure-cli'|
 
 If you are running this script from **Nix shell**, most of the requirements are already set with the exception of **Docker** and the **hyperscaler account**.
 " | gum format
@@ -33,47 +32,111 @@ gum confirm "
 Do you have those tools installed?
 " || exit 0
 
+rm -f .env
+
+# #########################
+# # Control Plane Cluster #
+# #########################
+
+# kind create cluster --config kind.yaml
+
+# kubectl apply \
+#     --filename https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+
+# ##############
+# # ArgoCD #
+# ##############
+
+
+
+# helm upgrade --install argocd argo-cd \
+#     --repo https://argoproj.github.io/argo-helm \
+#     --namespace argocd --create-namespace \
+#     --values argocd/install/helm-values.yaml --wait
+
+
+# echo "## Create aws-creds.conf" | gum format
+
+# HYPERSCALER=aws
+
+# echo "export HYPERSCALER=$HYPERSCALER" >> .env
+
+
+# AWS_ACCESS_KEY_ID=$(gum input --placeholder "AWS Access Key ID" --value "$AWS_ACCESS_KEY_ID")
+# echo "export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> .env
+
+# AWS_SECRET_ACCESS_KEY=$(gum input --placeholder "AWS Secret Access Key" --value "$AWS_SECRET_ACCESS_KEY" --password)
+# echo "export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> .env
+
+# AWS_ACCOUNT_ID=$(gum input --placeholder "AWS Account ID" --value "$AWS_ACCOUNT_ID")
+# echo "export AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID" >> .env
+
+# echo "[default]
+# aws_access_key_id = $AWS_ACCESS_KEY_ID
+# aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
+# " >aws-creds.conf
+
+
+# kubectl --namespace crossplane-system \
+#     create secret generic aws-creds \
+#     --from-file creds=./aws-creds.conf
+
+
+# ################
+# # Crossplane #
+# ################
+
+# kubectl apply -n argocd -f argocd/crossplane-bootstrap.yaml
+
+
+# kubectl apply -n argocd -f argocd/crossplane-infrastructure.yaml
+
+
+# kubectl apply -n argocd -f argocd/teams/a-team.yaml
+
+
+
 ##############
 # Crossplane #
 ##############
 
-rm -f a-team/intro.yaml
+# rm -f a-team/intro.yaml
 
-git add .
+# git add .
 
-git commit -m "Remove intro"
+# git commit -m "Remove intro"
 
-git push
+# git push
 
-COUNTER=$(kubectl get managed --no-headers | grep -v database \
-	| grep -v object | grep -v release | wc -l)
+# COUNTER=$(kubectl get managed --no-headers | grep -v database \
+# 	| grep -v object | grep -v release | wc -l)
 
-while [ $COUNTER -ne 0 ]; do
-	echo "$COUNTER resources still exist. Waiting for them to be deleted..."
-	sleep 30
-	COUNTER=$(kubectl get managed --no-headers \
-		| grep -v database | grep -v object | grep -v release \
-		| wc -l)
-done
+# while [ $COUNTER -ne 0 ]; do
+# 	echo "$COUNTER resources still exist. Waiting for them to be deleted..."
+# 	sleep 30
+# 	COUNTER=$(kubectl get managed --no-headers \
+# 		| grep -v database | grep -v object | grep -v release \
+# 		| wc -l)
+# done
 
-if [[ "$HYPERSCALER" == "google" ]]; then
+# if [[ "$HYPERSCALER" == "google" ]]; then
 
-	gcloud projects delete $PROJECT_ID --quiet
+# 	gcloud projects delete $PROJECT_ID --quiet
 
-fi
+# fi
 
-#########################
-# Control Plane Cluster #
-#########################
+# #########################
+# # Control Plane Cluster #
+# #########################
 
-kind delete cluster
+# kind delete cluster
 
-##################
-# Commit Changes #
-##################
+# ##################
+# # Commit Changes #
+# ##################
 
-git add .
+# git add .
 
-git commit -m "Chapter end"
+# git commit -m "Chapter end"
 
-git push
+# git push

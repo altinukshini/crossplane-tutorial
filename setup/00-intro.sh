@@ -89,18 +89,9 @@ kubectl --namespace crossplane-system \
 kubectl apply -n argocd -f argocd/crossplane-bootstrap.yaml
 
 
+kubectl apply -n argocd -f argocd/crossplane-infrastructure.yaml
 
 
+kubectl apply -n argocd -f argocd/teams/a-team.yaml
 
 
-
-kubectl apply \
-    --filename providers/provider-kubernetes-incluster.yaml
-
-
-
-
-
-
-
-#kubectl apply --filename argocd/a-team/a-team.yaml
