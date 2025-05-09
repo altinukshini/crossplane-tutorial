@@ -5,8 +5,21 @@ configs:
     argocdServerAdminPassword: "$2a$10$m3eTlEdRen0nS86c5Zph5u/bDFQMcWZYdG3NVdiyaACCqoxLJaz16"
     argocdServerAdminPasswordMtime: "2021-11-08T15:04:05Z"
   cm:
+    # The advantages of using the tracking id annotation is that there are no clashes any more with other 
+    # Kubernetes tools and Argo CD is never confused about the owner of a resource. 
+    # The annotation+label can also be used if you want other tools to understand resources managed by Argo CD.
     application.resourceTrackingMethod: annotation
     timeout.reconciliation: 60s
+    # Crossplane providers generates a ProviderConfigUsage for each of the managed resource (MR) it handles. 
+    # This resource enable representing the relationship between MR and a ProviderConfig so that the controller can use it as 
+    # finalizer when a ProviderConfig is deleted. End-users of Crossplane are not expected to interact with this resource.
+    # Imagine having a lot of Crossplane Resources that you want to work with. Just like it is shown in the following image. 
+    # One of the issues is that the ArgoCD UI reactivity can be impacted and become slow and confusing:
+    resource.exclusions: |
+      - apiGroups:
+        - "*"
+        kinds:
+        - ProviderConfigUsage
   params:
     "server.insecure": true
 server:

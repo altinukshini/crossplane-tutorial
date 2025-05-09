@@ -11,12 +11,20 @@ spec:
   source:
     repoURL: https://github.com/altinukshini/crossplane-tutorial.git
     targetRevision: HEAD
-    path: a-team
+    path: argocd/a-team
   destination:
     server: https://kubernetes.default.svc
     namespace: a-team
   syncPolicy:
     automated:
-      selfHeal: true
       prune: true
+      selfHeal: true
       allowEmpty: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 1
+      backoff:
+        duration: 5s 
+        factor: 2 
+        maxDuration: 1m
