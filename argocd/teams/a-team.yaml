@@ -6,6 +6,8 @@ metadata:
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
+  labels:
+    crossplane.example.org: a-team
 spec:
   project: default
   source:

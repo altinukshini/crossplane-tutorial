@@ -18,7 +18,7 @@ spec:
     targetRevision: HEAD
     path: crossplane/functions
   destination:
-    namespace: default
+    namespace: crossplane-system
     server: https://kubernetes.default.svc
   # Using syncPolicy.automated here, otherwise the deployement of our Crossplane provider will fail with
   # 'Resource not found in cluster: pkg.crossplane.io/v1/Provider:provider-aws'

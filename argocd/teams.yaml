@@ -3,23 +3,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: crossplane-bootstrap
+  name: teams
   namespace: argocd
   labels:
-    crossplane.example.org: bootstrap
+    crossplane.example.org: teams
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   project: default
   source:
     repoURL: https://github.com/altinukshini/crossplane-tutorial.git
     targetRevision: HEAD
-    path: argocd/crossplane-bootstrap
+    path: argocd/teams
   destination:
     server: https://kubernetes.default.svc
-    namespace: crossplane-system
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true    

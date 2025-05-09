@@ -86,10 +86,7 @@ kubectl --namespace crossplane-system \
 # Crossplane #
 ################
 
-kubectl apply -n argocd -f argocd/crossplane-bootstrap.yaml
-
-
-kubectl apply -n argocd -f argocd/crossplane-infrastructure.yaml
+kubectl apply -n argocd -f apps.yaml
 
 
 kubectl apply -n argocd -f argocd/teams/a-team.yaml
