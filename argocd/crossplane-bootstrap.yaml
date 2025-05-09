@@ -1,9 +1,12 @@
+# The ArgoCD App of Apps for all Crossplane components
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: a-team
+  name: crossplane-bootstrap
   namespace: argocd
+  labels:
+    crossplane.example.org: bootstrap
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -11,15 +14,13 @@ spec:
   source:
     repoURL: https://github.com/altinukshini/crossplane-tutorial.git
     targetRevision: HEAD
-    path: a-team
+    path: argocd/crossplane-bootstrap
   destination:
     server: https://kubernetes.default.svc
-    namespace: a-team
+    namespace: crossplane-system
   syncPolicy:
     automated:
-      prune: true
-      selfHeal: true
-      allowEmpty: true
+      prune: true    
     syncOptions:
     - CreateNamespace=true
     retry:

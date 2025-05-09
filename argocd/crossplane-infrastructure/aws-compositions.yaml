@@ -1,30 +1,30 @@
-# The ArgoCD Application for the AWS providers ProviderConfig
----
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: crossplane-provider-configs
+  name: crossplane-aws-compositions
   namespace: argocd
   labels:
     crossplane.example.org: crossplane
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
     repoURL: https://github.com/altinukshini/crossplane-tutorial.git
     targetRevision: HEAD
-    path: crossplane/provider-configs
+    path: infrastructure/crossplane/aws/compositions
   destination:
-    namespace: default
     server: https://kubernetes.default.svc
+    namespace: crossplane-system
   syncPolicy:
     automated:
       prune: true    
+    syncOptions:
+    - CreateNamespace=true
     retry:
-      limit: 5
+      limit: 1
       backoff:
         duration: 5s 
         factor: 2 

@@ -1,0 +1,228 @@
+# SQS Composition
+# This file defines both the SQS composite resource definition (XRD) and its composition
+# It creates a high-level abstraction for AWS SQS queues, automatically creating both a main queue and dead-letter queue
+
+---
+# CompositeResourceDefinition (XRD) for SQS
+# This defines the API schema for the SQS composite resource
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xsqss.example.org
+spec:
+  group: example.org
+  # Names and pluralization for the custom resource
+  names:
+    kind: xSQS
+    plural: xsqss
+  # Claim configuration - enables namespaced usage of this resource
+  claimNames:
+    kind: SQS
+    plural: sqss
+  # API versions for this custom resource
+  versions:
+    - name: v1alpha1
+      # The 'served' field indicates whether this version is available to serve API requests.
+      # When set to 'true', this version (v1alpha1) of the API is enabled and can be used.
+      # If set to 'false', the API version would be disabled and requests to it would fail.
+      served: true
+      referenceable: true
+      # Schema defines the fields available on this custom resource
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                # AWS region where the SQS queues will be created
+                region:
+                  type: string
+                # Provider config to use for AWS authentication
+                providerConfig:
+                  type: string
+                  default: default
+              required:
+                - region
+            # Status fields to store information about created resources
+            # The status section in a Crossplane XRD defines the structure for runtime information
+            # that will be populated by the Crossplane controllers as resources are provisioned.
+            # This information is read-only and reflects the current state of the resources.
+            status:
+              properties:
+                # Contains details about the created main SQS queue
+                # This field will be populated with information like the queue URL, ARN,
+                # and other attributes of the provisioned SQS queue
+                sqs:
+                  type: object
+                  description: "Runtime information about the provisioned main SQS queue"
+                  x-kubernetes-preserve-unknown-fields: true  # Allows storing arbitrary AWS-returned fields
+                # Contains details about the created dead-letter queue
+                # Similar to the main queue, this will contain information about the DLQ
+                # such as its URL, ARN, and other AWS-specific attributes
+                sqsDl:
+                  type: object
+                  description: "Runtime information about the provisioned dead-letter queue"
+                  x-kubernetes-preserve-unknown-fields: true  # Allows storing arbitrary AWS-returned fields
+              # The status fields are automatically populated by Crossplane and can be used by:
+              # 1. Operators and users to check the state of provisioned resources
+              # 2. Other systems to get connection information (like queue URLs)
+              # 3. Automation tools to make decisions based on resource state
+              # 4. The Crossplane controllers themselves for internal state management
+---
+# Composition for SQS
+# This defines how the SQS composite resource is implemented
+# It specifies what managed resources to create and how to configure them
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: sqs.example.org
+spec:
+  # Reference to the XRD this composition implements
+  compositeTypeRef:
+    apiVersion: example.org/v1alpha1
+    kind: xSQS
+  # Pipeline mode is a composition mode introduced in Crossplane v1.11+
+  # It enables a more flexible, function-based approach to composition where:
+  # - Resources are processed through a series of functions in a defined order
+  # - Each function can transform, validate, or generate resources
+  # - Functions run in sequence, with the output of one becoming input to the next
+  # - Provides better separation of concerns and extensibility compared to the older "attribute" mode
+  # - Supports more complex composition patterns and custom logic
+  mode: Pipeline
+  pipeline:
+    # The patch-and-transform function handles patching between resources
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        # Patch sets define reusable transformations
+        patchSets:
+          # Patch set for propagating region to all resources
+          - name: region
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+          # Patch set for propagating provider config to all resources
+          - name: providerConfig
+            patches:
+              # This patch takes a value from the composite resource and applies it to managed resources
+              # type: FromCompositeFieldPath - Indicates this patch extracts a value from the composite resource
+              # fromFieldPath: spec.providerConfig - The path in the composite resource where the value is stored
+              #   (the provider configuration name specified in the composite resource)
+              # toFieldPath: spec.providerConfigRef.name - The destination path in the managed resource
+              #   (sets the name of the provider config reference in each managed resource)
+              # 
+              # In your Claim, you should specify the providerConfig in the spec section like:
+              # spec:
+              #   providerConfig: aws-provider-config-name  # Name of your AWS provider configuration
+              #   # other specifications...
+              #
+              # This allows you to control which AWS provider configuration to use when creating the SQS resources
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+        # Managed resources that make up this composition
+        resources:
+          # Main SQS Queue
+          - name: sqs
+            # The 'base' section defines the template for the managed resource that will be created.
+            # It contains the initial configuration values that will be used before any patches are applied.
+            # Think of it as the starting point or blueprint for the resource.
+            base:
+              apiVersion: sqs.aws.crossplane.io/v1beta1
+              kind: Queue
+              metadata:
+                name: sqs
+              spec:
+                forProvider:
+                  region: ""  # Empty because it's filled by the region PatchSet defined above
+                  delaySeconds: 4
+                  redrivePolicy:
+                    deadLetterTargetArnSelector:
+                      matchControllerRef: true
+                      matchLabels:
+                        dl-queue: "true"
+                    maxReceiveCount: 1
+                  tags:
+                    provisioner: crossplane
+                providerConfigRef:
+                  name: ""  # Empty because it's filled by the providerConfig PatchSet defined above
+            
+            # The 'patches' section defines modifications that will be applied to the base template.
+            # Patches allow dynamic values to be injected into the resource based on:
+            # - Values from the composite resource (FromCompositeFieldPath)
+            # - Reusable patch sets defined earlier in the composition (PatchSet)
+            # - Writing values back to the composite resource (ToCompositeFieldPath)
+            # 
+            # Patches are applied in sequence, with each patch potentially modifying
+            # the result of previous patches.
+            patches:
+              # This patch copies the name from the composite resource (XR) to the managed resource
+              # For example, if your claim is named "my-queue", this managed resource will also be named "my-queue"
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+              
+              # This applies the region PatchSet defined earlier in the composition
+              # It copies the AWS region from the composite resource to the managed resource
+              # This allows users to specify which region they want their SQS queue created in
+              - type: PatchSet
+                patchSetName: region
+              
+              # This applies the providerConfig PatchSet defined earlier in the composition
+              # It copies the AWS provider configuration name from the composite resource to the managed resource
+              # This determines which AWS credentials will be used to create the SQS queue
+              - type: PatchSet
+                patchSetName: providerConfig
+              
+              # This patch writes information back to the composite resource
+              # It takes the status information from the created SQS queue (status.atProvider)
+              # and writes it to the composite resource's status.sqs field
+              # This makes the queue's details (like ARN, URL) available to the user through the claim's status
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider
+                toFieldPath: status.sqs
+          # Dead-Letter Queue for handling failed messages
+          - name: sqs-dl
+            base:
+              apiVersion: sqs.aws.crossplane.io/v1beta1
+              kind: Queue
+              metadata:
+                name: sqs-dl
+                # Label that enables the main queue to find this DLQ
+                labels:
+                  dl-queue: "true"
+              spec:
+                forProvider:
+                  region: ""
+                  # Messages will be delayed 4 seconds before being available
+                  delaySeconds: 4
+                  tags:
+                    provisioner: crossplane
+                providerConfigRef:
+                  name: "" # Empty because it's filled by the providerConfig PatchSet defined above
+            patches:
+              # Copy the name from the composite resource to this resource with "-dl" suffix
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                # Transform the name to add "-dl" suffix
+                transforms:
+                  - type: string
+                    string:
+                      fmt: '%s-dl'
+                      type: Format
+              # Apply region patch
+              - type: PatchSet
+                patchSetName: region
+              # Apply provider config patch
+              - type: PatchSet
+                patchSetName: providerConfig
+              # Save DLQ details to composite status
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider
+                toFieldPath: status.sqsDl

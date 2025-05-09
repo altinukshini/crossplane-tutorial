@@ -55,27 +55,6 @@ helm upgrade --install argocd argo-cd \
     --values argocd/install/helm-values.yaml --wait
 
 
-################
-# Crossplane #
-################
-
-kubectl apply -f argocd/crossplane-bootstrap/crossplane-helm-secret.yaml
-
-kubectl apply --filename argocd/crossplane-bootstrap/crossplane.yaml
-
-kubectl apply --filename argocd/crossplane-bootstrap/crossplane-providers.yaml
-
-kubectl apply --filename argocd/crossplane-bootstrap/crossplane-provider-configs.yaml
-
-
-
-
-
-
-
-
-
-
 echo "## Create aws-creds.conf" | gum format
 
 HYPERSCALER=aws
@@ -103,6 +82,12 @@ kubectl --namespace crossplane-system \
     --from-file creds=./aws-creds.conf
 
 
+################
+# Crossplane #
+################
+
+kubectl apply -n argocd -f argocd/crossplane-bootstrap.yaml
+
 
 
 
@@ -111,17 +96,6 @@ kubectl --namespace crossplane-system \
 
 kubectl apply \
     --filename providers/provider-kubernetes-incluster.yaml
-
-
-gum spin --spinner dot \
-    --title "Waiting for Crossplane providers..." -- sleep 60
-
-kubectl wait --for=condition=healthy provider.pkg.crossplane.io \
-    --all --timeout=1800s
-
-
-
-kubectl apply --filename providers/aws-config.yaml
 
 
 
