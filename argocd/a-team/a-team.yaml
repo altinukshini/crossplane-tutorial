@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://github.com/altinukshini/crossplane-tutorial.git
     targetRevision: HEAD
-    path: argocd/a-team
+    path: a-team
   destination:
     server: https://kubernetes.default.svc
     namespace: a-team

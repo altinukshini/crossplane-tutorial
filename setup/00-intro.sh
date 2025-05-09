@@ -44,7 +44,7 @@ kubectl apply \
     --filename https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
 
 ##############
-# Crossplane #
+# ArgoCD #
 ##############
 
 
@@ -52,39 +52,33 @@ kubectl apply \
 helm upgrade --install argocd argo-cd \
     --repo https://argoproj.github.io/argo-helm \
     --namespace argocd --create-namespace \
-    --values argocd/helm-values.yaml --wait
+    --values argocd/install/helm-values.yaml --wait
 
 
-kubectl apply --filename argocd/crossplane-bootstrap/crossplane.yaml
-
-#kubectl apply --filename argocd/a-team/a-team.yaml
-#
-
+################
+# Crossplane #
+################
 
 kubectl apply -f argocd/crossplane-bootstrap/crossplane-helm-secret.yaml
 
+kubectl apply --filename argocd/crossplane-bootstrap/crossplane.yaml
+
+kubectl apply --filename argocd/crossplane-bootstrap/crossplane-providers.yaml
+
+kubectl apply --filename argocd/crossplane-bootstrap/crossplane-provider-configs.yaml
 
 
 
 
 
-helm upgrade --install crossplane crossplane \
-    --repo https://charts.crossplane.io/stable \
-    --namespace crossplane-system --create-namespace --wait
-
-kubectl apply \
-    --filename providers/provider-kubernetes-incluster.yaml
 
 
-gum spin --spinner dot \
-    --title "Waiting for Crossplane providers..." -- sleep 60
 
-kubectl wait --for=condition=healthy provider.pkg.crossplane.io \
-    --all --timeout=1800s
 
-echo "## Which Hyperscaler do you want to use?" | gum format
 
-HYPERSCALER=$(gum choose "aws")
+echo "## Create aws-creds.conf" | gum format
+
+HYPERSCALER=aws
 
 echo "export HYPERSCALER=$HYPERSCALER" >> .env
 
@@ -110,27 +104,29 @@ kubectl --namespace crossplane-system \
 
 
 
+
+
+
+
+
+kubectl apply \
+    --filename providers/provider-kubernetes-incluster.yaml
+
+
+gum spin --spinner dot \
+    --title "Waiting for Crossplane providers..." -- sleep 60
+
+kubectl wait --for=condition=healthy provider.pkg.crossplane.io \
+    --all --timeout=1800s
+
+
+
 kubectl apply --filename providers/aws-config.yaml
 
 
 
-kubectl create namespace a-team
 
 
 
-###########
-# Argo CD #
-###########
 
-REPO_URL=$(git config --get remote.origin.url)
-# workaround to avoid setting up SSH key in ArgoCD
-REPO_URL=$(echo $REPO_URL | sed 's/git@github.com:/https:\/\/github.com\//') # replace git@github.com: to https://github.com/
-
-yq --inplace ".spec.source.repoURL = \"$REPO_URL\"" argocd/apps.yaml
-
-helm upgrade --install argocd argo-cd \
-    --repo https://argoproj.github.io/argo-helm \
-    --namespace argocd --create-namespace \
-    --values argocd/helm-values.yaml --wait
-
-kubectl apply --filename argocd/apps.yaml
+#kubectl apply --filename argocd/a-team/a-team.yaml
