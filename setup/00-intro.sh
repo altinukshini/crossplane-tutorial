@@ -77,18 +77,19 @@ aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
 " >aws-creds.conf
 
 
-kubectl --namespace crossplane-system \
-    create secret generic aws-creds \
-    --from-file creds=./aws-creds.conf
-
-
 ################
 # Crossplane #
 ################
 
+kubectl create namespace crossplane-system
+
+kubectl --namespace crossplane-system \
+    create secret generic aws-creds \
+    --from-file creds=./aws-creds.conf
+
 kubectl apply -n argocd -f apps.yaml
 
 
-kubectl apply -n argocd -f argocd/teams/a-team.yaml
+#kubectl apply -n argocd -f argocd/teams/a-team.yaml
 
 
